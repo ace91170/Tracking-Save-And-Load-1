@@ -2,17 +2,16 @@
 <html lang="id">
 <head>
     <meta charset="utf-8">
-    <title>GPS Logger Pro - Fixed View</title>
+    <title>GPS Logger Pro - Compact</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
     <style>
-        html, body { margin:0; padding:0; height: 100%; width: 100%; overflow: hidden; background: #222; font-family: sans-serif; }
+        html, body { margin:0; padding:0; height: 100%; width: 100%; overflow: hidden; background: #222; font-family: "Arial Narrow", "Arial", sans-serif-condensed, sans-serif; }
         #map { position: absolute; top: 0; bottom: 0; width: 100%; height: 100%; z-index: 1; background: #333; }
         
-        /* UI Overlays */
         #start-overlay {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background: rgba(0,0,0,0.9); z-index: 9000;
@@ -20,58 +19,69 @@
         }
         
         .status-bar {
-            position: absolute; top: 15px; left: 50%; transform: translateX(-50%);
+            position: absolute; top: 10px; left: 50%; transform: translateX(-50%);
             z-index: 2000; background: rgba(0,0,0,0.85); color: #00ff00;
-            padding: 10px; border-radius: 10px; font-size: 11px;
-            text-align: center; border: 1px solid #444; min-width: 280px; pointer-events: none;
+            padding: 5px 10px; border-radius: 8px; font-size: 11px;
+            text-align: center; border: 1px solid #444; min-width: 250px; pointer-events: none;
         }
 
+        /* Container Kontrol Ramping */
         .controls {
-            position: absolute; bottom: 20px; right: 10px; z-index: 2000;
-            display: flex; flex-direction: column; gap: 8px; width: 160px;
+            position: absolute; bottom: 15px; right: 10px; z-index: 2000;
+            display: flex; flex-direction: column; gap: 5px; width: 140px;
         }
 
-        /* Zoom Controls Custom */
         .zoom-controls {
-            position: absolute; top: 80px; right: 10px; z-index: 2000;
-            display: flex; flex-direction: column; gap: 5px;
+            position: absolute; top: 70px; right: 10px; z-index: 2000;
+            display: flex; flex-direction: column; gap: 4px;
         }
+
         .btn-zoom {
-            width: 45px; height: 45px; background: white; border: 1px solid #ccc;
-            border-radius: 8px; font-size: 24px; font-weight: bold; color: #333;
+            width: 38px; height: 38px; background: white; border: 1px solid #ccc;
+            border-radius: 6px; font-size: 20px; font-weight: bold; color: #333;
             display: flex; align-items: center; justify-content: center; cursor: pointer;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
         }
 
         .custom-dialog {
             position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
-            background: white; padding: 20px; border-radius: 15px; z-index: 8000;
-            display: none; flex-direction: column; gap: 10px; width: 280px; box-shadow: 0 0 20px rgba(0,0,0,0.5);
+            background: white; padding: 15px; border-radius: 12px; z-index: 8000;
+            display: none; flex-direction: column; gap: 8px; width: 260px; box-shadow: 0 0 15px rgba(0,0,0,0.5);
         }
 
-        .btn { padding: 12px; border-radius: 10px; border: none; font-weight: bold; cursor: pointer; font-size: 12px; }
+        /* Tombol Compact & Font Narrow */
+        .btn { 
+            padding: 7px 10px; /* Tinggi dikurangi */
+            border-radius: 6px; border: none; font-weight: bold; cursor: pointer; 
+            font-size: 11px; font-family: "Arial Narrow", sans-serif;
+            text-transform: uppercase;
+        }
+        
         .btn-save { background: #28a745; color: white; }
         .btn-cancel { background: #dc3545; color: white; }
         .btn-action { background: #007bff; color: white; }
         .btn-util { background: #6f42c1; color: white; }
         
-        input[type="text"] { padding: 10px; border: 1px solid #ccc; border-radius: 5px; }
+        select { 
+            padding: 5px; border-radius: 6px; font-size: 11px; 
+            font-family: "Arial Narrow", sans-serif; background: #eee;
+        }
         
-        #list-container { max-height: 300px; overflow-y: auto; margin-top: 10px; }
-        .data-row { padding: 8px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; font-size: 11px; }
+        input[type="text"] { padding: 8px; border: 1px solid #ccc; border-radius: 5px; font-size: 12px; }
         
-        /* Marker Label yang stabil */
+        .data-row { padding: 6px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; font-size: 10px; }
+        
         .alt-label { 
-            color: #ff0000 !important; font-weight: bold !important; font-size: 10px !important; 
+            color: #ff0000 !important; font-weight: bold !important; font-size: 9px !important; 
             background: rgba(255,255,255,0.8) !important; border: 1px solid red !important;
-            border-radius: 3px; padding: 1px 3px;
+            border-radius: 2px; padding: 0px 2px;
         }
     </style>
 </head>
 <body>
 
 <div id="start-overlay">
-    <button class="btn btn-action" style="padding: 30px" onclick="initApp()">🚀 MULAI GPS LOGGER</button>
+    <button class="btn btn-action" style="padding: 20px 40px; font-size: 14px;" onclick="initApp()">🚀 TRACKING MODE<br>Save And Load<br>Version 1.0</button>
 </div>
 
 <div class="zoom-controls">
@@ -79,49 +89,47 @@
     <div class="btn-zoom" onclick="map.zoomOut()">−</div>
 </div>
 
-<!-- Dialog Simpan Titik -->
 <div id="save-dialog" class="custom-dialog">
-    <h3 style="margin:0">Simpan Titik?</h3>
-    <p id="coord-info" style="font-size: 12px; color: #666;"></p>
-    <div style="display: flex; gap: 10px;">
+    <h4 style="margin:0">Simpan Titik?</h4>
+    <p id="coord-info" style="font-size: 11px; color: #666; margin: 5px 0;"></p>
+    <div style="display: flex; gap: 8px;">
         <button class="btn btn-save" style="flex:1" onclick="confirmSave()">SIMPAN</button>
         <button class="btn btn-cancel" style="flex:1" onclick="closeDialog('save-dialog')">BATAL</button>
     </div>
 </div>
 
-<!-- Dialog Ekspor -->
 <div id="export-dialog" class="custom-dialog">
-    <h3 style="margin:0">Ekspor Data</h3>
-    <input type="text" id="filename-input" placeholder="Nama file...">
-    <div style="display: flex; gap: 10px;">
+    <h4 style="margin:0">Nama File Ekspor</h4>
+    <input type="text" id="filename-input" placeholder="Ketik nama file...">
+    <div style="display: flex; gap: 8px;">
         <button class="btn btn-save" style="flex:1" onclick="processExport()">PROSES</button>
         <button class="btn btn-cancel" style="flex:1" onclick="closeDialog('export-dialog')">BATAL</button>
     </div>
 </div>
 
-<!-- Modal List Data -->
-<div id="data-modal" class="custom-dialog" style="width: 90%; max-width: 400px;">
-    <h3 style="margin:0">Daftar Titik</h3>
-    <div id="list-container"></div>
-    <button class="btn btn-action" onclick="closeDialog('data-modal')">TUTUP</button>
+<div id="data-modal" class="custom-dialog" style="width: 85%; max-width: 350px;">
+    <h4 style="margin:0">Log Data</h4>
+    <div id="list-container" style="max-height: 250px; overflow-y: auto;"></div>
+    <button class="btn btn-action" style="margin-top:10px" onclick="closeDialog('data-modal')">TUTUP</button>
 </div>
 
-<div class="status-bar" id="stat">Mencari Satelit...</div>
+<div class="status-bar" id="stat">Mencari GPS...</div>
 <div id="map"></div>
 
 <div class="controls">
-    <select id="interval-select" style="padding: 10px; border-radius: 8px;">
-        <option value="5000">⏱️ 5 Detik</option>
-        <option value="15000">⏱️ 15 Detik</option>
-        <option value="30000">⏱️ 30 Detik</option>
+    <select id="interval-select">
+        <option value="4000">⏱️ 4 DETIK</option>
+        <option value="5000" selected>⏱️ 5 DETIK</option>
+        <option value="10000">⏱️ 10 DETIK</option>
+        <option value="15000">⏱️ 15 DETIK</option>
     </select>
     <button id="auto-btn" class="btn btn-util" onclick="toggleAuto()">🤖 AUTO: OFF</button>
     <button class="btn btn-save" onclick="triggerManualSave()">📍 SIMPAN TITIK</button>
-    <button class="btn btn-action" onclick="triggerExport()">💾 EKSPOR (TXT/GPX)</button>
-    <button class="btn btn-util" onclick="viewData()">🔍 DATA & HAPUS</button>
+    <button class="btn btn-action" onclick="triggerExport()">💾 EKSPOR TXT/GPX</button>
+    <button class="btn btn-util" onclick="viewData()">🔍 LIHAT & HAPUS</button>
     <input type="file" id="upload-input" style="display:none" accept=".txt" onchange="handleUpload(event)">
-    <button class="btn btn-util" onclick="document.getElementById('upload-input').click()">📂 UPLOAD TXT</button>
-    <button class="btn btn-cancel" onclick="clearAll()">⚠️ RESET ALL</button>
+    <button class="btn btn-util" onclick="document.getElementById('upload-input').click()">📂 UPLOAD DATA</button>
+    <button class="btn btn-cancel" style="font-size: 9px; padding: 4px;" onclick="clearAll()">⚠️ RESET</button>
 </div>
 
 <script>
@@ -133,14 +141,10 @@ let tempPos = null, firstLock = true;
 
 function initApp() {
     document.getElementById('start-overlay').style.display = 'none';
-    
-    // Inisialisasi peta dengan zoomControl: false karena kita buat custom di atas
     map = L.map('map', { zoomControl: false }).setView([0,0], 2);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
-    
     markersLayer = L.layerGroup().addTo(map);
-    userMarker = L.circleMarker([0,0], { radius: 8, color: '#fff', fillColor: '#007bff', fillOpacity: 1, weight: 2 }).addTo(map);
-    
+    userMarker = L.circleMarker([0,0], { radius: 7, color: '#fff', fillColor: '#007bff', fillOpacity: 1, weight: 2 }).addTo(map);
     loadStoredData();
     startGPS();
 }
@@ -149,119 +153,81 @@ function startGPS() {
     navigator.geolocation.watchPosition(pos => {
         currentPos = [pos.coords.latitude, pos.coords.longitude];
         currentAlt = pos.coords.altitude ? pos.coords.altitude.toFixed(1) : "0.0";
-        
         userMarker.setLatLng(currentPos);
-        
-        // Perbaikan View: Saat pertama kali dapat sinyal, langsung zoom ke posisi (level 18)
-        if (firstLock) {
-            map.setView(currentPos, 18);
-            firstLock = false;
-        } else if (!isAutoOn && !document.getElementById('data-modal').style.display === 'flex') {
-            // Pan pelan mengikuti posisi jika tidak sedang membuka data
-            map.panTo(currentPos);
-        }
+        if (firstLock) { map.setView(currentPos, 18); firstLock = false; }
+        else if (!isAutoOn && !document.getElementById('data-modal').style.display.includes('flex')) { map.panTo(currentPos); }
         updateStatus();
-    }, (err) => {
-        console.error("GPS Error:", err);
-        document.getElementById('stat').innerText = "GPS Error/Akses Ditolak";
-    }, { enableHighAccuracy: true, maximumAge: 0 });
+    }, null, { enableHighAccuracy: true });
 }
 
 function updateStatus() {
     if(!currentPos) return;
-    document.getElementById('stat').innerHTML = `DATA: ${savedCoords.length} | ZOOM: ${map.getZoom()}<br>LAT: ${currentPos[0].toFixed(6)} | LNG: ${currentPos[1].toFixed(6)} | ALT: ${currentAlt}m`;
+    document.getElementById('stat').innerHTML = `PTS: ${savedCoords.length} | Z: ${map.getZoom()} | ALT: ${currentAlt}m<br>LAT: ${currentPos[0].toFixed(6)} | LNG: ${currentPos[1].toFixed(6)}`;
 }
 
 function triggerManualSave() {
-    if (!currentPos) return alert("GPS belum siap!");
+    if (!currentPos) return;
     tempPos = { lat: currentPos[0], lng: currentPos[1], alt: currentAlt };
-    document.getElementById('coord-info').innerText = `${tempPos.lat.toFixed(6)}, ${tempPos.lng.toFixed(6)} (Alt: ${tempPos.alt}m)`;
+    document.getElementById('coord-info').innerText = `${tempPos.lat.toFixed(5)}, ${tempPos.lng.toFixed(5)}`;
     document.getElementById('save-dialog').style.display = 'flex';
 }
 
 function confirmSave() {
     const entry = { lat: tempPos.lat, lng: tempPos.lng, alt: tempPos.alt, time: new Date().toISOString() };
     savedCoords.push(entry);
-    saveToStorage();
+    localStorage.setItem('gps_pro_data', JSON.stringify(savedCoords));
     addMarker(entry);
     closeDialog('save-dialog');
-}
-
-function saveToStorage() {
-    localStorage.setItem('gps_pro_data', JSON.stringify(savedCoords));
     updateStatus();
 }
 
 function addMarker(c) {
-    // Retain Tampilan: CircleMarker ukurannya tetap (pixel-based) tidak terpengaruh zoom peta
-    const m = L.circleMarker([c.lat, c.lng], { 
-        radius: 6, 
-        color: '#ff0000', 
-        fillColor: '#ff0000', 
-        fillOpacity: 0.8,
-        weight: 1
-    }).addTo(markersLayer);
-    
-    m.bindTooltip(`${c.alt}m`, { 
-        permanent: true, 
-        direction: 'bottom',
-        className: 'alt-label',
-        offset: [0, 5]
-    });
+    const m = L.circleMarker([c.lat, c.lng], { radius: 5, color: '#ff0000', fillColor: '#ff0000', fillOpacity: 0.8, weight: 1 }).addTo(markersLayer);
+    m.bindTooltip(`${c.alt}m`, { permanent: true, direction: 'bottom', className: 'alt-label', offset: [0, 5] });
 }
 
 function loadStoredData() {
     markersLayer.clearLayers();
     savedCoords.forEach(addMarker);
-    if (savedCoords.length > 0 && firstLock) {
+    if (savedCoords.length > 0) {
         const last = savedCoords[savedCoords.length - 1];
         map.setView([last.lat, last.lng], 18);
         firstLock = false;
     }
 }
 
-// --- FUNGSI EKSPOR ---
 function triggerExport() {
-    if (savedCoords.length === 0) return alert("Data kosong!");
+    if (savedCoords.length === 0) return alert("Kosong!");
     document.getElementById('export-dialog').style.display = 'flex';
 }
 
 function processExport() {
-    const name = document.getElementById('filename-input').value.trim();
-    if (!name) return alert("Nama file wajib diisi!");
+    const name = document.getElementById('filename-input').value.trim() || "GPS_LOG";
+    const txt = savedCoords.map(c => `[${c.lat}, ${c.lng}, Alt:${c.alt}m]`).join('\n');
+    downloadFile(txt, `${name}.txt`, 'text/plain');
     
-    // TXT Export
-    const txtContent = savedCoords.map(c => `[${c.lat}, ${c.lng}, Alt:${c.alt}m]`).join('\n');
-    downloadFile(txtContent, `${name}.txt`, 'text/plain');
-    
-    // GPX Export
-    let gpx = `<?xml version="1.0" encoding="UTF-8"?><gpx version="1.1" creator="GPSLogger"><trk><trkseg>`;
-    savedCoords.forEach(c => {
-        gpx += `\n<trkpt lat="${c.lat}" lon="${c.lng}"><ele>${c.alt}</ele><time>${c.time}</time></trkpt>`;
-    });
+    let gpx = `<?xml version="1.0" encoding="UTF-8"?><gpx version="1.1"><trk><trkseg>`;
+    savedCoords.forEach(c => { gpx += `\n<trkpt lat="${c.lat}" lon="${c.lng}"><ele>${c.alt}</ele><time>${c.time}</time></trkpt>`; });
     gpx += `\n</trkseg></trk></gpx>`;
     downloadFile(gpx, `${name}.gpx`, 'application/gpx+xml');
-    
     closeDialog('export-dialog');
 }
 
 function downloadFile(content, filename, type) {
-    const blob = new Blob([content], { type: type });
     const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
+    a.href = URL.createObjectURL(new Blob([content], { type: type }));
     a.download = filename;
     a.click();
 }
 
-// --- DATA MANAGEMENT ---
 function viewData() {
     const container = document.getElementById('list-container');
     container.innerHTML = "";
     savedCoords.forEach((c, index) => {
         const row = document.createElement('div');
         row.className = 'data-row';
-        row.innerHTML = `<div><b>${index+1}.</b> ${c.lat.toFixed(5)}, ${c.lng.toFixed(5)}</div>
-                         <button class="btn-cancel" style="padding:5px 10px; font-size:10px" onclick="deletePoint(${index})">HAPUS</button>`;
+        row.innerHTML = `<div><b>${index+1}</b>. ${c.lat.toFixed(4)}, ${c.lng.toFixed(4)}</div>
+                         <button class="btn btn-cancel" style="padding:3px 6px; font-size:9px" onclick="deletePoint(${index})">X</button>`;
         row.onclick = () => { map.setView([c.lat, c.lng], 19); closeDialog('data-modal'); };
         container.appendChild(row);
     });
@@ -269,9 +235,9 @@ function viewData() {
 }
 
 function deletePoint(index) {
-    if (confirm("Hapus titik ini?")) {
+    if (confirm("Hapus?")) {
         savedCoords.splice(index, 1);
-        saveToStorage();
+        localStorage.setItem('gps_pro_data', JSON.stringify(savedCoords));
         loadStoredData();
         viewData();
     }
@@ -279,7 +245,6 @@ function deletePoint(index) {
 
 function handleUpload(event) {
     const file = event.target.files[0];
-    if (!file) return;
     const reader = new FileReader();
     reader.onload = (e) => {
         const lines = e.target.result.split('\n');
@@ -289,9 +254,8 @@ function handleUpload(event) {
         }).filter(x => x);
         if (imported.length > 0) {
             savedCoords = [...savedCoords, ...imported];
-            saveToStorage();
+            localStorage.setItem('gps_pro_data', JSON.stringify(savedCoords));
             loadStoredData();
-            alert(`Berhasil impor ${imported.length} titik.`);
         }
     };
     reader.readAsText(file);
@@ -312,7 +276,7 @@ function toggleAuto() {
 }
 
 function closeDialog(id) { document.getElementById(id).style.display = 'none'; }
-function clearAll() { if(confirm("Hapus semua data?")) { localStorage.clear(); location.reload(); } }
+function clearAll() { if(confirm("Hapus semua?")) { localStorage.clear(); location.reload(); } }
 </script>
 </body>
 </html>
