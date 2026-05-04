@@ -2,7 +2,7 @@
 <html lang="id">
 <head>
     <meta charset="utf-8">
-    <title>GPS Logger Pro - V1.6</title>
+    <title>GPS Logger Pro - V2.1 (Updated Intervals)</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
@@ -36,9 +36,7 @@
             display: flex; flex-direction: column; gap: 6px;
         }
 
-        .quick-zoom {
-            position: absolute; top: 10px; left: 10px; z-index: 2000;
-        }
+        .quick-zoom { position: absolute; top: 10px; left: 10px; z-index: 2000; }
 
         .btn-tool {
             width: 44px; height: 44px; background: white; border: 1px solid #ccc;
@@ -55,7 +53,6 @@
         }
 
         .btn { padding: 8px 10px; border-radius: 6px; border: none; font-weight: bold; cursor: pointer; font-size: 11px; text-transform: uppercase; font-family: "Arial Narrow"; }
-        .btn:disabled { opacity: 0.3; cursor: not-allowed; filter: grayscale(1); }
         .btn-save { background: #28a745; color: white; }
         .btn-load { background: #ffc107; color: #000; }
         .btn-action { background: #007bff; color: white; }
@@ -73,12 +70,12 @@
 
 <div id="start-overlay" style="position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.95); z-index:9000; display:flex; justify-content:center; align-items:center; text-align:center;">
     <button class="btn btn-action" style="padding:25px 50px; font-size:16px; border-radius:15px;" onclick="initApp()">
-        🚀 GPS LOGGER V1.6<br>START SYSTEM
+        🚀 START SYSTEM V2.1<br>(FIXED INTERVALS)
     </button>
 </div>
 
 <div class="quick-zoom">
-    <div id="btn-zoom18" class="btn-tool" onclick="setZoom18()" title="Zoom 18">🔍</div>
+    <div id="btn-zoom18" class="btn-tool" onclick="setZoom18()" title="Quick Zoom 18">🔍</div>
 </div>
 
 <div class="zoom-controls">
@@ -111,10 +108,12 @@
 <div id="map"></div>
 
 <div class="controls">
+    <!-- INTERVAL TELAH DISESUAIKAN -->
     <select id="interval-select">
+        <option value="4000">⏱️ 4 DETIK</option>
         <option value="5000" selected>⏱️ 5 DETIK</option>
+        <option value="8000">⏱️ 8 DETIK</option>
         <option value="10000">⏱️ 10 DETIK</option>
-        <option value="30000">⏱️ 30 DETIK</option>
     </select>
     <button id="auto-btn" class="btn btn-util" onclick="toggleAuto()">🤖 AUTO: OFF</button>
     <button id="btn-manual-save" class="btn btn-save" onclick="openSaveDialog()">📍 SIMPAN TITIK</button>
@@ -127,7 +126,7 @@
 <script>
 let activePoints = []; 
 let db = JSON.parse(localStorage.getItem('gps_pro_db')) || {}; 
-let currentPos = null, currentAlt = "0.0";
+let currentPos = null, rawLat = 0, rawLng = 0, currentAlt = 0;
 let map, userMarker, markersLayer;
 let isAutoOn = false, autoInterval = null;
 let followUser = true, firstLock = true;
@@ -135,18 +134,31 @@ let tempAutoPoints = [];
 
 function initApp() {
     document.getElementById('start-overlay').style.display = 'none';
-    map = L.map('map', { zoomControl: false, tap: false }).setView([0,0], 2);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+    
+    map = L.map('map', { 
+        zoomControl: false, 
+        tap: false,
+        minZoom: 2,
+        maxZoom: 20 
+    }).setView([0,0], 2);
+
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 20,
+        maxNativeZoom: 19
+    }).addTo(map);
+
     markersLayer = L.layerGroup().addTo(map);
     userMarker = L.circleMarker([0,0], { radius: 8, color: '#fff', fillColor: '#007bff', fillOpacity: 1, weight: 3 }).addTo(map);
     
     map.on('movestart', (e) => { if (!e.hard) setFollowMode(false); });
-    map.on('zoomstart', (e) => { if (!e.hard) setFollowMode(false); });
+    map.on('zoomend', () => { updateStatus(); }); 
 
     if (navigator.geolocation) {
         navigator.geolocation.watchPosition(pos => {
-            currentPos = [pos.coords.latitude, pos.coords.longitude];
-            currentAlt = pos.coords.altitude ? pos.coords.altitude.toFixed(1) : "0.0";
+            rawLat = pos.coords.latitude;
+            rawLng = pos.coords.longitude;
+            currentPos = [rawLat, rawLng];
+            currentAlt = pos.coords.altitude || 0;
             userMarker.setLatLng(currentPos);
             
             if (firstLock) { 
@@ -154,10 +166,15 @@ function initApp() {
                 firstLock = false; 
                 setFollowMode(true); 
             } else if (followUser) { 
-                map.setView(currentPos, map.getZoom(), { animate: false }); 
+                let zoomSekarang = map.getZoom();
+                map.setView(currentPos, zoomSekarang, { animate: false }); 
             }
             updateStatus();
-        }, null, { enableHighAccuracy: true });
+        }, null, { 
+            enableHighAccuracy: true,
+            timeout: 5000,
+            maximumAge: 0 
+        });
     }
 }
 
@@ -187,82 +204,64 @@ function setZoom18() {
 function updateStatus() {
     if(!currentPos) return;
     const modeText = followUser ? "LOCK" : "FREE";
-    document.getElementById('stat').innerHTML = `MODE: ${modeText} | PTS: ${activePoints.length} | ALT: ${currentAlt}m<br>${currentPos[0].toFixed(6)}, ${currentPos[1].toFixed(6)}`;
+    const currentZ = map.getZoom();
+    document.getElementById('stat').innerHTML = `MODE: ${modeText} | ZOOM: ${currentZ} | PTS: ${activePoints.length}<br>${rawLat.toFixed(7)}, ${rawLng.toFixed(7)}`;
 }
 
 function toggleAuto() {
     isAutoOn = !isAutoOn;
     const autoBtn = document.getElementById('auto-btn');
-    const btns = ['btn-manual-save', 'btn-view', 'btn-clear', 'btn-export', 'btn-reset', 'btn-zoom18'];
-    const intervalSelect = document.getElementById('interval-select');
-
     if (isAutoOn) {
         autoBtn.innerText = "🤖 AUTO: ON";
         autoBtn.style.background = "#ffc107"; autoBtn.style.color = "#000";
-        btns.forEach(id => document.getElementById(id).disabled = true);
-        intervalSelect.disabled = true;
         tempAutoPoints = []; 
         saveAutoPoint();
-        autoInterval = setInterval(saveAutoPoint, intervalSelect.value);
+        autoInterval = setInterval(saveAutoPoint, document.getElementById('interval-select').value);
     } else {
         clearInterval(autoInterval);
         autoBtn.innerText = "🤖 AUTO: OFF";
         autoBtn.style.background = "#6f42c1"; autoBtn.style.color = "#fff";
         if (tempAutoPoints.length > 0) {
             document.getElementById('save-title').innerText = "Simpan Sesi Auto";
-            document.getElementById('coord-preview').innerText = `Terekam ${tempAutoPoints.length} titik koordinat.`;
             document.getElementById('save-dialog').style.display = 'flex';
-        } else {
-            finalizeUI();
         }
     }
 }
 
 function saveAutoPoint() {
     if(!currentPos) return;
-    const entry = { lat: currentPos[0], lng: currentPos[1], alt: currentAlt, name: "T_" + Date.now(), time: new Date().toISOString() };
+    const entry = { lat: rawLat, lng: rawLng, alt: currentAlt, name: "T_" + Date.now(), time: new Date().toISOString() };
     tempAutoPoints.push(entry);
     activePoints.push(entry);
     addMarker(entry);
     updateStatus();
 }
 
-function finalizeUI() {
-    const btns = ['btn-manual-save', 'btn-view', 'btn-clear', 'btn-export', 'btn-reset', 'btn-zoom18'];
-    btns.forEach(id => document.getElementById(id).disabled = false);
-    document.getElementById('interval-select').disabled = false;
-    tempAutoPoints = [];
-}
-
-function openSaveDialog() {
-    if(!currentPos) return;
-    document.getElementById('save-title').innerText = "Simpan Titik";
-    document.getElementById('coord-preview').innerText = `${currentPos[0].toFixed(6)}, ${currentPos[1].toFixed(6)}`;
-    document.getElementById('save-dialog').style.display = 'flex';
-}
-
 function confirmSave() {
     const name = document.getElementById('point-name').value.trim();
     if(!name) return alert("Nama wajib diisi!");
-    if (tempAutoPoints.length > 0) {
-        db[name] = [...tempAutoPoints];
-    } else {
-        const entry = { lat: currentPos[0], lng: currentPos[1], alt: currentAlt, name: name, time: new Date().toISOString() };
+    if (tempAutoPoints.length === 0) {
+        const entry = { lat: rawLat, lng: rawLng, alt: currentAlt, name: name, time: new Date().toISOString() };
         activePoints.push(entry);
-        if(!db[name]) db[name] = [];
-        db[name].push(entry);
+        db[name] = [entry];
         addMarker(entry);
+    } else {
+        db[name] = [...tempAutoPoints];
     }
     localStorage.setItem('gps_pro_db', JSON.stringify(db));
-    document.getElementById('point-name').value = "";
-    closeDialog('save-dialog');
-    finalizeUI();
+    cancelSave();
 }
 
 function cancelSave() {
     document.getElementById('point-name').value = "";
     closeDialog('save-dialog');
-    finalizeUI();
+    tempAutoPoints = [];
+}
+
+function openSaveDialog() {
+    if(!currentPos) return;
+    document.getElementById('coord-preview').innerText = `${rawLat.toFixed(8)}, ${rawLng.toFixed(8)}`;
+    document.getElementById('save-dialog').style.display = 'flex';
 }
 
 function openLoadDialog() {
@@ -304,22 +303,21 @@ function addMarker(c) {
 }
 
 function exportData() {
-    if(activePoints.length === 0) return alert("Peta sedang bersih / tidak ada data.");
-    let gpx = `<?xml version="1.0" encoding="UTF-8"?><gpx version="1.1"><trk><trkseg>`;
-    activePoints.forEach(c => {
-        gpx += `\n<trkpt lat="${c.lat}" lon="${c.lng}"><ele>${c.alt}</ele><time>${c.time}</time><name>${c.name}</name></trkpt>`;
+    if(activePoints.length === 0) return alert("Peta sedang bersih.");
+    let gpx = `<?xml version="1.0" encoding="UTF-8"?><gpx version="1.1" creator="GPSLoggerPro"><trk><trkseg>`;
+    activePoints.forEach(c => { 
+        gpx += `\n<trkpt lat="${c.lat}" lon="${c.lng}"><ele>${c.alt}</ele><time>${c.time}</time><name>${c.name}</name></trkpt>`; 
     });
     gpx += `\n</trkseg></trk></gpx>`;
-    const blob = new Blob([gpx], { type: 'application/gpx+xml' });
     const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = `GPS_EXPORT_${Date.now()}.gpx`;
+    a.href = URL.createObjectURL(new Blob([gpx], { type: 'application/gpx+xml' }));
+    a.download = `GPS_TRACK_${Date.now()}.gpx`;
     a.click();
 }
 
 function deleteHistory() {
     const key = document.getElementById('file-listbox').value;
-    if(key && confirm(`Hapus data ${key} secara permanen?`)) { 
+    if(key && confirm(`Hapus ${key}?`)) { 
         delete db[key]; 
         localStorage.setItem('gps_pro_db', JSON.stringify(db)); 
         openLoadDialog(); 
@@ -327,7 +325,7 @@ function deleteHistory() {
 }
 
 function closeDialog(id) { document.getElementById(id).style.display = 'none'; }
-function resetApp() { if(confirm("HAPUS TOTAL SEMUA DATABASE?")) { localStorage.clear(); location.reload(); } }
+function resetApp() { if(confirm("RESET TOTAL?")) { localStorage.clear(); location.reload(); } }
 </script>
 </body>
 </html>
