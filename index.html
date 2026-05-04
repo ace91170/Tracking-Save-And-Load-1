@@ -2,7 +2,7 @@
 <html lang="id">
 <head>
     <meta charset="utf-8">
-    <title>GPS Logger Pro - V1.1 Active Label</title>
+    <title>GPS Logger Pro - Full Version 1.1</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
@@ -12,18 +12,19 @@
         html, body { margin:0; padding:0; height: 100%; width: 100%; overflow: hidden; background: #222; font-family: "Arial Narrow", sans-serif; }
         #map { position: absolute; top: 0; bottom: 0; width: 100%; height: 100%; z-index: 1; background: #333; }
         
-        /* Indikator File Aktif (Sudut Kanan Atas) */
+        /* Indikator File Aktif (Kanan Atas) */
         #active-file-label {
             position: absolute; top: 10px; right: 10px; z-index: 3000;
-            background: #ccff00; color: #000; padding: 2px 8px;
+            background: #ccff00; color: #000; padding: 3px 10px;
             font-size: 10px; font-weight: bold; border-radius: 4px;
-            border: 1px solid #99aa00; display: none;
+            border: 1px solid #99aa00; display: none; box-shadow: 0 2px 5px rgba(0,0,0,0.3);
         }
 
         .status-bar {
             position: absolute; top: 10px; left: 50%; transform: translateX(-50%);
             z-index: 2000; background: rgba(0,0,0,0.85); color: #00ff00;
-            padding: 5px 10px; border-radius: 8px; font-size: 11px; text-align: center; border: 1px solid #444; min-width: 200px; pointer-events: none;
+            padding: 5px 10px; border-radius: 8px; font-size: 11px;
+            text-align: center; border: 1px solid #444; min-width: 220px; pointer-events: none;
         }
 
         .controls {
@@ -31,20 +32,32 @@
             display: flex; flex-direction: column; gap: 5px; width: 140px;
         }
 
+        .zoom-controls {
+            position: absolute; top: 70px; right: 10px; z-index: 2000;
+            display: flex; flex-direction: column; gap: 4px;
+        }
+
+        .btn-zoom {
+            width: 38px; height: 38px; background: white; border: 1px solid #ccc;
+            border-radius: 6px; font-size: 20px; font-weight: bold; color: #333;
+            display: flex; align-items: center; justify-content: center; cursor: pointer;
+        }
+
         .custom-dialog {
             position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
             background: white; padding: 15px; border-radius: 12px; z-index: 8000;
-            display: none; flex-direction: column; gap: 8px; width: 260px; box-shadow: 0 0 15px rgba(0,0,0,0.5);
+            display: none; flex-direction: column; gap: 8px; width: 260px; box-shadow: 0 0 20px rgba(0,0,0,0.5);
         }
 
         .btn { padding: 7px 10px; border-radius: 6px; border: none; font-weight: bold; cursor: pointer; font-size: 11px; text-transform: uppercase; font-family: "Arial Narrow"; }
         .btn-save { background: #28a745; color: white; }
         .btn-load { background: #ffc107; color: #000; }
         .btn-action { background: #007bff; color: white; }
+        .btn-util { background: #6f42c1; color: white; }
         .btn-cancel { background: #dc3545; color: white; }
         
-        #file-listbox { width: 100%; height: 100px; border: 1px solid #ccc; border-radius: 4px; font-family: "Arial Narrow"; }
-        input[type="text"] { padding: 8px; border: 1px solid #ccc; border-radius: 5px; font-size: 12px; }
+        select, input[type="text"] { padding: 6px; border-radius: 5px; border: 1px solid #ccc; font-family: "Arial Narrow"; font-size: 12px; }
+        #file-listbox { width: 100%; height: 100px; }
 
         .alt-label { color: red !important; font-weight: bold !important; font-size: 9px !important; background: white !important; border: 1px solid red !important; padding: 0 2px; }
     </style>
@@ -53,14 +66,22 @@
 
 <div id="active-file-label">FILE: <span id="current-filename">-</span></div>
 
-<div id="start-overlay" style="position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.9); z-index:9000; display:flex; justify-content:center; align-items:center;">
-    <button class="btn btn-action" style="padding:20px 40px; font-size:14px;" onclick="initApp()">🚀 TRACKING<br>Save and Load<br> Version 1.1<br>READY</button>
+<div id="start-overlay" style="position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.95); z-index:9000; display:flex; justify-content:center; align-items:center; text-align:center;">
+    <button class="btn btn-action" style="padding:20px 40px; font-size:16px; border-radius:15px;" onclick="initApp()">
+        🚀 TRACKING<br>Save and Load<br>Version 1.1<br>READY
+    </button>
 </div>
 
-<!-- Modal Save -->
+<div class="zoom-controls">
+    <div class="btn-zoom" onclick="map.zoomIn()">+</div>
+    <div class="btn-zoom" onclick="map.zoomOut()">−</div>
+</div>
+
+<!-- Modal Simpan -->
 <div id="save-dialog" class="custom-dialog">
-    <h4 style="margin:0">Nama Titik/Sesi</h4>
-    <input type="text" id="point-name" placeholder="Contoh: Titik Batas A">
+    <h4 style="margin:0">Simpan Titik</h4>
+    <p id="coord-preview" style="font-size: 10px; color: #666; margin:0"></p>
+    <input type="text" id="point-name" placeholder="Nama titik (misal: Batas A)">
     <div style="display: flex; gap: 8px;">
         <button class="btn btn-save" style="flex:1" onclick="confirmSave()">SIMPAN</button>
         <button class="btn btn-cancel" style="flex:1" onclick="closeDialog('save-dialog')">BATAL</button>
@@ -69,30 +90,38 @@
 
 <!-- Modal Load -->
 <div id="load-dialog" class="custom-dialog">
-    <h4 style="margin:0">Pilih Data (Load)</h4>
+    <h4 style="margin:0">Load Data</h4>
     <select id="file-listbox" size="5"></select>
     <div style="display: flex; gap: 5px;">
-        <button class="btn btn-load" style="flex:1" onclick="processLoad()">OPEN</button>
-        <button class="btn btn-cancel" style="flex:1" onclick="deleteSession()">HAPUS</button>
+        <button class="btn btn-load" style="flex:1" onclick="processLoad()">BUKA</button>
+        <button class="btn btn-cancel" style="flex:1" onclick="deleteHistory()">HAPUS</button>
     </div>
     <button class="btn btn-action" onclick="closeDialog('load-dialog')">TUTUP</button>
 </div>
 
-<div class="status-bar" id="stat">GPS Mencari Lokasi...</div>
+<div class="status-bar" id="stat">Mencari GPS...</div>
 <div id="map"></div>
 
 <div class="controls">
+    <select id="interval-select">
+        <option value="4000">⏱️ 4 DETIK</option>
+        <option value="5000" selected>⏱️ 5 DETIK</option>
+        <option value="10000">⏱️ 10 DETIK</option>
+        <option value="15000">⏱️ 15 DETIK</option>
+    </select>
+    <button id="auto-btn" class="btn btn-util" onclick="toggleAuto()">🤖 AUTO: OFF</button>
     <button class="btn btn-save" onclick="openSaveDialog()">📍 SIMPAN TITIK</button>
     <button class="btn btn-load" onclick="openLoadDialog()">📂 LOAD DATA</button>
-    <button class="btn btn-action" onclick="exportData()">💾 EKSPOR GPX</button>
-    <button class="btn btn-cancel" onclick="clearMap()">⚠️ RESET PETA</button>
+    <button class="btn btn-action" onclick="exportData()">💾 EKSPOR GPX/TXT</button>
+    <button class="btn btn-cancel" style="font-size: 9px; padding: 4px;" onclick="resetApp()">⚠️ RESET</button>
 </div>
 
 <script>
-let currentSession = []; // Data yang sedang tampil di peta
-let db = JSON.parse(localStorage.getItem('gps_v1_db')) || {}; // Format: { "NamaFile": [koordinat] }
+let activePoints = []; 
+let db = JSON.parse(localStorage.getItem('gps_pro_db')) || {}; 
 let currentPos = null, currentAlt = "0.0";
 let map, userMarker, markersLayer;
+let isAutoOn = false, autoInterval = null, firstLock = true;
 
 function initApp() {
     document.getElementById('start-overlay').style.display = 'none';
@@ -105,42 +134,41 @@ function initApp() {
         currentPos = [pos.coords.latitude, pos.coords.longitude];
         currentAlt = pos.coords.altitude ? pos.coords.altitude.toFixed(1) : "0.0";
         userMarker.setLatLng(currentPos);
-        if(!map.getBounds().contains(currentPos)) map.panTo(currentPos);
+        if(firstLock) { map.setView(currentPos, 18); firstLock = false; }
+        else if(!isAutoOn && !document.querySelector('.custom-dialog[style*="flex"]')) { map.panTo(currentPos); }
         updateStatus();
     }, null, { enableHighAccuracy: true });
 }
 
 function updateStatus() {
     if(!currentPos) return;
-    document.getElementById('stat').innerHTML = `PTS: ${currentSession.length} | ALT: ${currentAlt}m<br>${currentPos[0].toFixed(6)}, ${currentPos[1].toFixed(6)}`;
+    document.getElementById('stat').innerHTML = `PTS: ${activePoints.length} | ALT: ${currentAlt}m<br>${currentPos[0].toFixed(6)}, ${currentPos[1].toFixed(6)}`;
 }
 
-// SAVE
 function openSaveDialog() {
     if(!currentPos) return;
+    document.getElementById('coord-preview').innerText = `${currentPos[0].toFixed(6)}, ${currentPos[1].toFixed(6)}`;
     document.getElementById('save-dialog').style.display = 'flex';
 }
 
 function confirmSave() {
     const name = document.getElementById('point-name').value.trim();
-    if(!name) return alert("Beri nama dulu!");
+    if(!name) return alert("Nama wajib diisi!");
     
-    const data = { lat: currentPos[0], lng: currentPos[1], alt: currentAlt, name: name, time: new Date().toISOString() };
+    const entry = { lat: currentPos[0], lng: currentPos[1], alt: currentAlt, name: name, time: new Date().toISOString() };
+    activePoints.push(entry);
     
-    currentSession.push(data);
-    
-    // Simpan ke database lokal
+    // Simpan ke "Database"
     if(!db[name]) db[name] = [];
-    db[name].push(data);
-    localStorage.setItem('gps_v1_db', JSON.stringify(db));
+    db[name].push(entry);
+    localStorage.setItem('gps_pro_db', JSON.stringify(db));
     
-    addMarker(data);
+    addMarker(entry);
     closeDialog('save-dialog');
     document.getElementById('point-name').value = "";
     updateStatus();
 }
 
-// LOAD
 function openLoadDialog() {
     const listbox = document.getElementById('file-listbox');
     listbox.innerHTML = "";
@@ -154,22 +182,18 @@ function openLoadDialog() {
 }
 
 function processLoad() {
-    const selected = document.getElementById('file-listbox').value;
-    if(!selected) return;
+    const key = document.getElementById('file-listbox').value;
+    if(!key) return;
     
-    // Set label di kanan atas
-    const label = document.getElementById('active-file-label');
-    document.getElementById('current-filename').innerText = selected;
-    label.style.display = 'block';
-
-    // Tampilkan data ke peta
-    currentSession = db[selected];
+    activePoints = db[key];
     markersLayer.clearLayers();
-    currentSession.forEach(addMarker);
+    activePoints.forEach(addMarker);
     
-    const last = currentSession[currentSession.length - 1];
+    document.getElementById('current-filename').innerText = key;
+    document.getElementById('active-file-label').style.display = 'block';
+    
+    const last = activePoints[activePoints.length - 1];
     map.setView([last.lat, last.lng], 18);
-    
     closeDialog('load-dialog');
     updateStatus();
 }
@@ -179,12 +203,34 @@ function addMarker(c) {
     m.bindTooltip(`${c.name} (${c.alt}m)`, { permanent: true, direction: 'bottom', className: 'alt-label', offset: [0, 5] });
 }
 
+function toggleAuto() {
+    isAutoOn = !isAutoOn;
+    const btn = document.getElementById('auto-btn');
+    if (isAutoOn) {
+        btn.innerText = "🤖 AUTO: ON";
+        btn.style.background = "#ffc107";
+        autoInterval = setInterval(() => {
+            if(!currentPos) return;
+            const autoName = "Auto_" + new Date().toLocaleTimeString();
+            const entry = { lat: currentPos[0], lng: currentPos[1], alt: currentAlt, name: autoName, time: new Date().toISOString() };
+            activePoints.push(entry);
+            addMarker(entry);
+            updateStatus();
+        }, document.getElementById('interval-select').value);
+    } else {
+        btn.innerText = "🤖 AUTO: OFF"; btn.style.background = "#6f42c1";
+        clearInterval(autoInterval);
+    }
+}
+
 function exportData() {
-    if(currentSession.length === 0) return alert("Peta kosong!");
-    const name = document.getElementById('current-filename').innerText;
-    
+    if(activePoints.length === 0) return alert("Data kosong!");
+    const fname = prompt("Nama file ekspor:", "GPS_LOG");
+    if(!fname) return;
+
+    // GPX Format
     let gpx = `<?xml version="1.0" encoding="UTF-8"?><gpx version="1.1" creator="GPSLogger"><trk><trkseg>`;
-    currentSession.forEach(c => {
+    activePoints.forEach(c => {
         gpx += `\n<trkpt lat="${c.lat}" lon="${c.lng}"><ele>${c.alt}</ele><time>${c.time}</time><name>${c.name}</name></trkpt>`;
     });
     gpx += `\n</trkseg></trk></gpx>`;
@@ -192,21 +238,21 @@ function exportData() {
     const blob = new Blob([gpx], { type: 'application/gpx+xml' });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
-    a.download = `${name}.gpx`;
+    a.download = `${fname}.gpx`;
     a.click();
 }
 
-function deleteSession() {
-    const selected = document.getElementById('file-listbox').value;
-    if(selected && confirm(`Hapus permanen ${selected}?`)) {
-        delete db[selected];
-        localStorage.setItem('gps_v1_db', JSON.stringify(db));
+function deleteHistory() {
+    const key = document.getElementById('file-listbox').value;
+    if(key && confirm(`Hapus ${key}?`)) {
+        delete db[key];
+        localStorage.setItem('gps_pro_db', JSON.stringify(db));
         openLoadDialog();
     }
 }
 
 function closeDialog(id) { document.getElementById(id).style.display = 'none'; }
-function clearMap() { markersLayer.clearLayers(); currentSession = []; document.getElementById('active-file-label').style.display = 'none'; updateStatus(); }
+function resetApp() { if(confirm("Reset tampilan peta?")) { activePoints = []; markersLayer.clearLayers(); document.getElementById('active-file-label').style.display = 'none'; updateStatus(); } }
 </script>
 </body>
 </html>
