@@ -2,7 +2,7 @@
 <html lang="id">
 <head>
     <meta charset="utf-8">
-    <title>GPS Logger Pro - V1.3</title>
+    <title>GPS Logger Pro - V1.4</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
@@ -34,6 +34,11 @@
         .zoom-controls {
             position: absolute; top: 70px; right: 10px; z-index: 2000;
             display: flex; flex-direction: column; gap: 6px;
+        }
+
+        /* TOMBOL ZOOM 18 BARU */
+        .quick-zoom {
+            position: absolute; top: 10px; left: 10px; z-index: 2000;
         }
 
         .btn-tool {
@@ -69,8 +74,13 @@
 
 <div id="start-overlay" style="position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.95); z-index:9000; display:flex; justify-content:center; align-items:center; text-align:center;">
     <button class="btn btn-action" style="padding:25px 50px; font-size:16px; border-radius:15px;" onclick="initApp()">
-        🚀 GPS LOGGER V1.3<br>START SYSTEM
+        🚀 GPS LOGGER V1.4<br>START SYSTEM
     </button>
+</div>
+
+<!-- TOMBOL ZOOM 18 DI KIRI ATAS -->
+<div class="quick-zoom">
+    <div id="btn-zoom18" class="btn-tool" onclick="setZoom18()" title="Zoom 18">🔍</div>
 </div>
 
 <div class="zoom-controls">
@@ -132,17 +142,24 @@ function initApp() {
     markersLayer = L.layerGroup().addTo(map);
     userMarker = L.circleMarker([0,0], { radius: 8, color: '#fff', fillColor: '#007bff', fillOpacity: 1, weight: 3 }).addTo(map);
     
-    // DETEKSI ZOOM ATAU GESER MANUAL
+    // DETEKSI INTERAKSI MANUAL (GESTURE, ZOOM, PINCH)
     map.on('movestart', (e) => { if (!e.hard) setFollowMode(false); });
-    map.on('zoomstart', () => { setFollowMode(false); });
+    map.on('zoomstart', (e) => { if (!e.hard) setFollowMode(false); });
 
     if (navigator.geolocation) {
         navigator.geolocation.watchPosition(pos => {
             currentPos = [pos.coords.latitude, pos.coords.longitude];
             currentAlt = pos.coords.altitude ? pos.coords.altitude.toFixed(1) : "0.0";
             userMarker.setLatLng(currentPos);
-            if (firstLock) { map.setView(currentPos, 18); firstLock = false; setFollowMode(true); } 
-            else if (followUser) { map.panTo(currentPos); }
+            
+            if (firstLock) { 
+                map.setView(currentPos, 18); 
+                firstLock = false; 
+                setFollowMode(true); 
+            } else if (followUser) { 
+                // MENGGUNAKAN PAN TANPA MENGUBAH ZOOM
+                map.panTo(currentPos); 
+            }
             updateStatus();
         }, null, { enableHighAccuracy: true });
     }
@@ -151,12 +168,29 @@ function initApp() {
 function setFollowMode(mode) {
     followUser = mode;
     const btn = document.getElementById('btn-recenter');
-    if(mode) { btn.classList.add('btn-gps-active'); if(currentPos) map.panTo(currentPos); } 
-    else { btn.classList.remove('btn-gps-active'); }
+    if(mode) { 
+        btn.classList.add('btn-gps-active'); 
+        if(currentPos) map.panTo(currentPos); 
+    } else { 
+        btn.classList.remove('btn-gps-active'); 
+    }
     updateStatus();
 }
 
-function recenterMap() { setFollowMode(true); if(currentPos) map.panTo(currentPos); }
+// FUNGSI RETAIN ZOOM SAAT RECENTER
+function recenterMap() { 
+    setFollowMode(true); 
+}
+
+// FUNGSI KHUSUS ZOOM 18
+function setZoom18() {
+    if(currentPos) {
+        map.setZoom(18);
+        map.panTo(currentPos);
+    } else {
+        map.setZoom(18);
+    }
+}
 
 function updateStatus() {
     if(!currentPos) return;
@@ -167,7 +201,7 @@ function updateStatus() {
 function toggleAuto() {
     isAutoOn = !isAutoOn;
     const autoBtn = document.getElementById('auto-btn');
-    const btns = ['btn-manual-save', 'btn-view', 'btn-clear', 'btn-export', 'btn-reset'];
+    const btns = ['btn-manual-save', 'btn-view', 'btn-clear', 'btn-export', 'btn-reset', 'btn-zoom18'];
     const intervalSelect = document.getElementById('interval-select');
 
     if (isAutoOn) {
@@ -176,14 +210,12 @@ function toggleAuto() {
         btns.forEach(id => document.getElementById(id).disabled = true);
         intervalSelect.disabled = true;
         tempAutoPoints = []; 
-
-        saveAutoPoint(); // Instant record
+        saveAutoPoint();
         autoInterval = setInterval(saveAutoPoint, intervalSelect.value);
     } else {
         clearInterval(autoInterval);
         autoBtn.innerText = "🤖 AUTO: OFF";
         autoBtn.style.background = "#6f42c1"; autoBtn.style.color = "#fff";
-        
         if (tempAutoPoints.length > 0) {
             document.getElementById('save-title').innerText = "Simpan Sesi Auto";
             document.getElementById('coord-preview').innerText = `Terekam ${tempAutoPoints.length} titik koordinat.`;
@@ -204,7 +236,7 @@ function saveAutoPoint() {
 }
 
 function finalizeUI() {
-    const btns = ['btn-manual-save', 'btn-view', 'btn-clear', 'btn-export', 'btn-reset'];
+    const btns = ['btn-manual-save', 'btn-view', 'btn-clear', 'btn-export', 'btn-reset', 'btn-zoom18'];
     btns.forEach(id => document.getElementById(id).disabled = false);
     document.getElementById('interval-select').disabled = false;
     tempAutoPoints = [];
@@ -220,7 +252,6 @@ function openSaveDialog() {
 function confirmSave() {
     const name = document.getElementById('point-name').value.trim();
     if(!name) return alert("Nama wajib diisi!");
-    
     if (tempAutoPoints.length > 0) {
         db[name] = [...tempAutoPoints];
     } else {
@@ -230,7 +261,6 @@ function confirmSave() {
         db[name].push(entry);
         addMarker(entry);
     }
-    
     localStorage.setItem('gps_pro_db', JSON.stringify(db));
     document.getElementById('point-name').value = "";
     closeDialog('save-dialog');
@@ -261,13 +291,11 @@ function processLoad() {
     activePoints = db[key];
     markersLayer.clearLayers();
     activePoints.forEach(addMarker);
-    
     document.getElementById('current-filename').innerText = key;
     document.getElementById('active-file-label').style.display = 'block';
-    
     setFollowMode(false); 
     const last = activePoints[activePoints.length - 1];
-    map.setView([last.lat, last.lng], 18);
+    map.setView([last.lat, last.lng], map.getZoom()); // RETAIN CURRENT ZOOM
     closeDialog('load-dialog');
 }
 
