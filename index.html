@@ -2,7 +2,7 @@
 <html lang="id">
 <head>
     <meta charset="utf-8">
-    <title>GPS Logger Pro - File Manager</title>
+    <title>GPS Logger Pro - Fixed View</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
@@ -23,7 +23,7 @@
             position: absolute; top: 15px; left: 50%; transform: translateX(-50%);
             z-index: 2000; background: rgba(0,0,0,0.85); color: #00ff00;
             padding: 10px; border-radius: 10px; font-size: 11px;
-            text-align: center; border: 1px solid #444; min-width: 280px;
+            text-align: center; border: 1px solid #444; min-width: 280px; pointer-events: none;
         }
 
         .controls {
@@ -31,14 +31,24 @@
             display: flex; flex-direction: column; gap: 8px; width: 160px;
         }
 
-        /* Modals & Dialogs */
+        /* Zoom Controls Custom */
+        .zoom-controls {
+            position: absolute; top: 80px; right: 10px; z-index: 2000;
+            display: flex; flex-direction: column; gap: 5px;
+        }
+        .btn-zoom {
+            width: 45px; height: 45px; background: white; border: 1px solid #ccc;
+            border-radius: 8px; font-size: 24px; font-weight: bold; color: #333;
+            display: flex; align-items: center; justify-content: center; cursor: pointer;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+
         .custom-dialog {
             position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
             background: white; padding: 20px; border-radius: 15px; z-index: 8000;
             display: none; flex-direction: column; gap: 10px; width: 280px; box-shadow: 0 0 20px rgba(0,0,0,0.5);
         }
 
-        /* Buttons */
         .btn { padding: 12px; border-radius: 10px; border: none; font-weight: bold; cursor: pointer; font-size: 12px; }
         .btn-save { background: #28a745; color: white; }
         .btn-cancel { background: #dc3545; color: white; }
@@ -49,13 +59,24 @@
         
         #list-container { max-height: 300px; overflow-y: auto; margin-top: 10px; }
         .data-row { padding: 8px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; font-size: 11px; }
-        .alt-label { color: red; font-weight: bold; font-size: 10px; background: white; padding: 2px; border: 1px solid red; }
+        
+        /* Marker Label yang stabil */
+        .alt-label { 
+            color: #ff0000 !important; font-weight: bold !important; font-size: 10px !important; 
+            background: rgba(255,255,255,0.8) !important; border: 1px solid red !important;
+            border-radius: 3px; padding: 1px 3px;
+        }
     </style>
 </head>
 <body>
 
 <div id="start-overlay">
     <button class="btn btn-action" style="padding: 30px" onclick="initApp()">🚀 MULAI GPS LOGGER</button>
+</div>
+
+<div class="zoom-controls">
+    <div class="btn-zoom" onclick="map.zoomIn()">+</div>
+    <div class="btn-zoom" onclick="map.zoomOut()">−</div>
 </div>
 
 <!-- Dialog Simpan Titik -->
@@ -68,24 +89,24 @@
     </div>
 </div>
 
-<!-- Dialog Ekspor (Minta Nama File) -->
+<!-- Dialog Ekspor -->
 <div id="export-dialog" class="custom-dialog">
-    <h3 style="margin:0">Ekspor Data (TXT & GPX)</h3>
-    <input type="text" id="filename-input" placeholder="Nama file (tanpa ekstensi)...">
+    <h3 style="margin:0">Ekspor Data</h3>
+    <input type="text" id="filename-input" placeholder="Nama file...">
     <div style="display: flex; gap: 10px;">
         <button class="btn btn-save" style="flex:1" onclick="processExport()">PROSES</button>
         <button class="btn btn-cancel" style="flex:1" onclick="closeDialog('export-dialog')">BATAL</button>
     </div>
 </div>
 
-<!-- Modal Lihat/Hapus Data -->
+<!-- Modal List Data -->
 <div id="data-modal" class="custom-dialog" style="width: 90%; max-width: 400px;">
     <h3 style="margin:0">Daftar Titik</h3>
     <div id="list-container"></div>
     <button class="btn btn-action" onclick="closeDialog('data-modal')">TUTUP</button>
 </div>
 
-<div class="status-bar" id="stat">Menunggu GPS...</div>
+<div class="status-bar" id="stat">Mencari Satelit...</div>
 <div id="map"></div>
 
 <div class="controls">
@@ -108,23 +129,17 @@ let savedCoords = JSON.parse(localStorage.getItem('gps_pro_data')) || [];
 let currentPos = null, currentAlt = null;
 let map, userMarker, markersLayer;
 let isAutoOn = false, autoInterval = null;
-let tempPos = null;
-
-// Audio Feedback
-const beep = () => {
-    const ctx = new (window.AudioContext || window.webkitAudioContext)();
-    const osc = ctx.createOscillator();
-    osc.connect(ctx.destination);
-    osc.type = 'sine'; osc.frequency.value = 440;
-    osc.start(); osc.stop(ctx.currentTime + 0.1);
-};
+let tempPos = null, firstLock = true;
 
 function initApp() {
     document.getElementById('start-overlay').style.display = 'none';
+    
+    // Inisialisasi peta dengan zoomControl: false karena kita buat custom di atas
     map = L.map('map', { zoomControl: false }).setView([0,0], 2);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+    
     markersLayer = L.layerGroup().addTo(map);
-    userMarker = L.circleMarker([0,0], { radius: 8, color: '#fff', fillColor: '#007bff', fillOpacity: 1 }).addTo(map);
+    userMarker = L.circleMarker([0,0], { radius: 8, color: '#fff', fillColor: '#007bff', fillOpacity: 1, weight: 2 }).addTo(map);
     
     loadStoredData();
     startGPS();
@@ -134,19 +149,31 @@ function startGPS() {
     navigator.geolocation.watchPosition(pos => {
         currentPos = [pos.coords.latitude, pos.coords.longitude];
         currentAlt = pos.coords.altitude ? pos.coords.altitude.toFixed(1) : "0.0";
+        
         userMarker.setLatLng(currentPos);
-        if(!isAutoOn) map.panTo(currentPos);
+        
+        // Perbaikan View: Saat pertama kali dapat sinyal, langsung zoom ke posisi (level 18)
+        if (firstLock) {
+            map.setView(currentPos, 18);
+            firstLock = false;
+        } else if (!isAutoOn && !document.getElementById('data-modal').style.display === 'flex') {
+            // Pan pelan mengikuti posisi jika tidak sedang membuka data
+            map.panTo(currentPos);
+        }
         updateStatus();
-    }, null, { enableHighAccuracy: true });
+    }, (err) => {
+        console.error("GPS Error:", err);
+        document.getElementById('stat').innerText = "GPS Error/Akses Ditolak";
+    }, { enableHighAccuracy: true, maximumAge: 0 });
 }
 
 function updateStatus() {
-    document.getElementById('stat').innerHTML = `DATA: ${savedCoords.length} | ALT: ${currentAlt}m<br>LAT: ${currentPos?.[0].toFixed(6)} | LNG: ${currentPos?.[1].toFixed(6)}`;
+    if(!currentPos) return;
+    document.getElementById('stat').innerHTML = `DATA: ${savedCoords.length} | ZOOM: ${map.getZoom()}<br>LAT: ${currentPos[0].toFixed(6)} | LNG: ${currentPos[1].toFixed(6)} | ALT: ${currentAlt}m`;
 }
 
-// --- LOGIKA SIMPAN ---
 function triggerManualSave() {
-    if (!currentPos) return;
+    if (!currentPos) return alert("GPS belum siap!");
     tempPos = { lat: currentPos[0], lng: currentPos[1], alt: currentAlt };
     document.getElementById('coord-info').innerText = `${tempPos.lat.toFixed(6)}, ${tempPos.lng.toFixed(6)} (Alt: ${tempPos.alt}m)`;
     document.getElementById('save-dialog').style.display = 'flex';
@@ -158,7 +185,6 @@ function confirmSave() {
     saveToStorage();
     addMarker(entry);
     closeDialog('save-dialog');
-    beep();
 }
 
 function saveToStorage() {
@@ -166,7 +192,35 @@ function saveToStorage() {
     updateStatus();
 }
 
-// --- LOGIKA EKSPOR (TXT & GPX) ---
+function addMarker(c) {
+    // Retain Tampilan: CircleMarker ukurannya tetap (pixel-based) tidak terpengaruh zoom peta
+    const m = L.circleMarker([c.lat, c.lng], { 
+        radius: 6, 
+        color: '#ff0000', 
+        fillColor: '#ff0000', 
+        fillOpacity: 0.8,
+        weight: 1
+    }).addTo(markersLayer);
+    
+    m.bindTooltip(`${c.alt}m`, { 
+        permanent: true, 
+        direction: 'bottom',
+        className: 'alt-label',
+        offset: [0, 5]
+    });
+}
+
+function loadStoredData() {
+    markersLayer.clearLayers();
+    savedCoords.forEach(addMarker);
+    if (savedCoords.length > 0 && firstLock) {
+        const last = savedCoords[savedCoords.length - 1];
+        map.setView([last.lat, last.lng], 18);
+        firstLock = false;
+    }
+}
+
+// --- FUNGSI EKSPOR ---
 function triggerExport() {
     if (savedCoords.length === 0) return alert("Data kosong!");
     document.getElementById('export-dialog').style.display = 'flex';
@@ -176,34 +230,19 @@ function processExport() {
     const name = document.getElementById('filename-input').value.trim();
     if (!name) return alert("Nama file wajib diisi!");
     
-    // Cek duplikasi di "pencatatan lokal" (menggunakan localStorage keys sebagai simulasi history file)
-    const history = JSON.parse(localStorage.getItem('file_history') || "[]");
-    if (history.includes(name)) {
-        if (!confirm("Nama file sudah ada. Tetap gunakan nama ini?")) return;
-    } else {
-        history.push(name);
-        localStorage.setItem('file_history', JSON.stringify(history));
-    }
-
-    downloadTXT(name);
-    downloadGPX(name);
-    closeDialog('export-dialog');
-}
-
-function downloadTXT(name) {
-    const content = savedCoords.map(c => `[${c.lat}, ${c.lng}, Alt:${c.alt}m]`).join('\n');
-    downloadFile(content, `${name}.txt`, 'text/plain');
-}
-
-function downloadGPX(name) {
-    let gpx = `<?xml version="1.0" encoding="UTF-8"?>
-<gpx version="1.1" creator="GPSLoggerPro">
-<trk><trkseg>`;
+    // TXT Export
+    const txtContent = savedCoords.map(c => `[${c.lat}, ${c.lng}, Alt:${c.alt}m]`).join('\n');
+    downloadFile(txtContent, `${name}.txt`, 'text/plain');
+    
+    // GPX Export
+    let gpx = `<?xml version="1.0" encoding="UTF-8"?><gpx version="1.1" creator="GPSLogger"><trk><trkseg>`;
     savedCoords.forEach(c => {
-        gpx += `\n  <trkpt lat="${c.lat}" lon="${c.lng}"><ele>${c.alt}</ele><time>${c.time}</time></trkpt>`;
+        gpx += `\n<trkpt lat="${c.lat}" lon="${c.lng}"><ele>${c.alt}</ele><time>${c.time}</time></trkpt>`;
     });
     gpx += `\n</trkseg></trk></gpx>`;
     downloadFile(gpx, `${name}.gpx`, 'application/gpx+xml');
+    
+    closeDialog('export-dialog');
 }
 
 function downloadFile(content, filename, type) {
@@ -214,17 +253,16 @@ function downloadFile(content, filename, type) {
     a.click();
 }
 
-// --- MANAJEMEN DATA ---
+// --- DATA MANAGEMENT ---
 function viewData() {
     const container = document.getElementById('list-container');
     container.innerHTML = "";
     savedCoords.forEach((c, index) => {
         const row = document.createElement('div');
         row.className = 'data-row';
-        row.innerHTML = `
-            <div><b>${index+1}.</b> ${c.lat.toFixed(5)}, ${c.lng.toFixed(5)}</div>
-            <button class="btn-cancel" style="padding:5px 10px; font-size:10px" onclick="deletePoint(${index})">HAPUS</button>
-        `;
+        row.innerHTML = `<div><b>${index+1}.</b> ${c.lat.toFixed(5)}, ${c.lng.toFixed(5)}</div>
+                         <button class="btn-cancel" style="padding:5px 10px; font-size:10px" onclick="deletePoint(${index})">HAPUS</button>`;
+        row.onclick = () => { map.setView([c.lat, c.lng], 19); closeDialog('data-modal'); };
         container.appendChild(row);
     });
     document.getElementById('data-modal').style.display = 'flex';
@@ -234,8 +272,8 @@ function deletePoint(index) {
     if (confirm("Hapus titik ini?")) {
         savedCoords.splice(index, 1);
         saveToStorage();
-        loadStoredData(); // Refresh map
-        viewData(); // Refresh list
+        loadStoredData();
+        viewData();
     }
 }
 
@@ -244,37 +282,19 @@ function handleUpload(event) {
     if (!file) return;
     const reader = new FileReader();
     reader.onload = (e) => {
-        try {
-            const lines = e.target.result.split('\n');
-            const imported = lines.map(line => {
-                const match = line.match(/\[(.*), (.*), Alt:(.*)m\]/);
-                if (match) return { lat: parseFloat(match[1]), lng: parseFloat(match[2]), alt: match[3], time: new Date().toISOString() };
-            }).filter(x => x);
-            
-            if (confirm(`Impor ${imported.length} titik?`)) {
-                savedCoords = [...savedCoords, ...imported];
-                saveToStorage();
-                loadStoredData();
-            }
-        } catch (err) { alert("Format file tidak didukung!"); }
+        const lines = e.target.result.split('\n');
+        const imported = lines.map(line => {
+            const match = line.match(/\[(.*), (.*), Alt:(.*)m\]/);
+            if (match) return { lat: parseFloat(match[1]), lng: parseFloat(match[2]), alt: match[3], time: new Date().toISOString() };
+        }).filter(x => x);
+        if (imported.length > 0) {
+            savedCoords = [...savedCoords, ...imported];
+            saveToStorage();
+            loadStoredData();
+            alert(`Berhasil impor ${imported.length} titik.`);
+        }
     };
     reader.readAsText(file);
-}
-
-// --- UTILS ---
-function addMarker(c) {
-    L.circleMarker([c.lat, c.lng], { radius: 5, color: 'red' })
-     .addTo(markersLayer)
-     .bindTooltip(`Alt: ${c.alt}m`, { permanent: true, className: 'alt-label' });
-}
-
-function loadStoredData() {
-    markersLayer.clearLayers();
-    savedCoords.forEach(addMarker);
-    if (savedCoords.length > 0) {
-        const last = savedCoords[savedCoords.length - 1];
-        map.setView([last.lat, last.lng], 15);
-    }
 }
 
 function toggleAuto() {
@@ -283,8 +303,7 @@ function toggleAuto() {
     if (isAutoOn) {
         btn.innerText = "🤖 AUTO: ON";
         btn.style.background = "#ffc107";
-        const interval = document.getElementById('interval-select').value;
-        autoInterval = setInterval(triggerManualSave, interval);
+        autoInterval = setInterval(triggerManualSave, document.getElementById('interval-select').value);
     } else {
         btn.innerText = "🤖 AUTO: OFF";
         btn.style.background = "#6f42c1";
@@ -293,8 +312,7 @@ function toggleAuto() {
 }
 
 function closeDialog(id) { document.getElementById(id).style.display = 'none'; }
-function clearAll() { if(confirm("Hapus semua data permanen?")) { localStorage.clear(); location.reload(); } }
-
+function clearAll() { if(confirm("Hapus semua data?")) { localStorage.clear(); location.reload(); } }
 </script>
 </body>
 </html>
