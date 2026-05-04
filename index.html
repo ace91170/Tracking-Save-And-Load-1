@@ -2,7 +2,7 @@
 <html lang="id">
 <head>
     <meta charset="utf-8">
-    <title>GPS Logger Pro - V1.2 Final</title>
+    <title>GPS Logger Pro - V1.3</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
@@ -14,9 +14,9 @@
         
         #active-file-label {
             position: absolute; top: 10px; right: 10px; z-index: 3000;
-            background: #ccff00; color: #000; padding: 3px 10px;
-            font-size: 10px; font-weight: bold; border-radius: 4px;
-            border: 1px solid #99aa00; display: none; box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+            background: #00ff00; color: #000; padding: 4px 12px;
+            font-size: 11px; font-weight: bold; border-radius: 4px;
+            border: 2px solid #008800; display: none; box-shadow: 0 0 10px rgba(0,255,0,0.5);
         }
 
         .status-bar {
@@ -38,17 +38,16 @@
 
         .btn-tool {
             width: 44px; height: 44px; background: white; border: 1px solid #ccc;
-            border-radius: 8px; font-size: 22px; font-weight: bold; color: #333;
-            display: flex; align-items: center; justify-content: center; cursor: pointer;
+            border-radius: 8px; font-size: 22px; display: flex; align-items: center; justify-content: center; cursor: pointer;
             box-shadow: 0 2px 6px rgba(0,0,0,0.3);
         }
 
-        .btn-gps-active { background: #007bff !important; color: white !important; border-color: #0056b3 !important; }
+        .btn-gps-active { background: #007bff !important; color: white !important; }
 
         .custom-dialog {
             position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
             background: white; padding: 15px; border-radius: 12px; z-index: 8000;
-            display: none; flex-direction: column; gap: 8px; width: 260px; box-shadow: 0 0 20px rgba(0,0,0,0.5);
+            display: none; flex-direction: column; gap: 8px; width: 280px; box-shadow: 0 0 20px rgba(0,0,0,0.5);
         }
 
         .btn { padding: 8px 10px; border-radius: 6px; border: none; font-weight: bold; cursor: pointer; font-size: 11px; text-transform: uppercase; font-family: "Arial Narrow"; }
@@ -60,7 +59,7 @@
         .btn-cancel { background: #dc3545; color: white; }
         
         select, input[type="text"] { padding: 8px; border-radius: 5px; border: 1px solid #ccc; font-family: "Arial Narrow"; font-size: 12px; }
-        #file-listbox { width: 100%; height: 120px; }
+        #file-listbox { width: 100%; height: 150px; }
         .alt-label { color: red !important; font-weight: bold !important; font-size: 9px !important; background: white !important; border: 1px solid red !important; padding: 0 2px; border-radius: 2px; }
     </style>
 </head>
@@ -69,13 +68,13 @@
 <div id="active-file-label">FILE: <span id="current-filename">-</span></div>
 
 <div id="start-overlay" style="position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.95); z-index:9000; display:flex; justify-content:center; align-items:center; text-align:center;">
-    <button class="btn btn-action" style="padding:25px 50px; font-size:16px; border-radius:15px; line-height: 1.4;" onclick="initApp()">
-        🚀 TRACKING<br>Save and Load<br>Version 1.2<br>READY
+    <button class="btn btn-action" style="padding:25px 50px; font-size:16px; border-radius:15px;" onclick="initApp()">
+        🚀 GPS LOGGER V1.3<br>START SYSTEM
     </button>
 </div>
 
 <div class="zoom-controls">
-    <div id="btn-recenter" class="btn-tool btn-gps-active" onclick="recenterMap()" title="Posisi Saya">🎯</div>
+    <div id="btn-recenter" class="btn-tool btn-gps-active" onclick="recenterMap()">🎯</div>
     <div class="btn-tool" onclick="map.zoomIn()">+</div>
     <div class="btn-tool" onclick="map.zoomOut()">−</div>
 </div>
@@ -83,7 +82,7 @@
 <div id="save-dialog" class="custom-dialog">
     <h4 id="save-title" style="margin:0">Simpan Titik</h4>
     <p id="coord-preview" style="font-size: 10px; color: #666; margin:0"></p>
-    <input type="text" id="point-name" placeholder="Nama Sesi/Titik">
+    <input type="text" id="point-name" placeholder="Nama Sesi / Titik">
     <div style="display: flex; gap: 8px;">
         <button class="btn btn-save" style="flex:1" onclick="confirmSave()">SIMPAN</button>
         <button class="btn btn-cancel" style="flex:1" onclick="cancelSave()">BATAL</button>
@@ -91,7 +90,7 @@
 </div>
 
 <div id="load-dialog" class="custom-dialog">
-    <h4 style="margin:0">Load Data</h4>
+    <h4 style="margin:0">Lihat Data Tersimpan</h4>
     <select id="file-listbox" size="5"></select>
     <div style="display: flex; gap: 5px;">
         <button class="btn btn-load" style="flex:1" onclick="processLoad()">BUKA</button>
@@ -105,16 +104,16 @@
 
 <div class="controls">
     <select id="interval-select">
-        <option value="4000">⏱️ 4 DETIK</option>
         <option value="5000" selected>⏱️ 5 DETIK</option>
         <option value="10000">⏱️ 10 DETIK</option>
-        <option value="15000">⏱️ 15 DETIK</option>
+        <option value="30000">⏱️ 30 DETIK</option>
     </select>
     <button id="auto-btn" class="btn btn-util" onclick="toggleAuto()">🤖 AUTO: OFF</button>
     <button id="btn-manual-save" class="btn btn-save" onclick="openSaveDialog()">📍 SIMPAN TITIK</button>
-    <button id="btn-load-data" class="btn btn-load" onclick="openLoadDialog()">📂 LOAD DATA</button>
-    <button id="btn-export" class="btn btn-action" onclick="exportData()">💾 EKSPOR GPX</button>
-    <button id="btn-reset" class="btn btn-cancel" style="font-size: 9px; padding: 4px;" onclick="resetApp()">⚠️ RESET</button>
+    <button id="btn-view" class="btn btn-load" onclick="openLoadDialog()">📂 LIHAT DATA</button>
+    <button id="btn-clear" class="btn btn-action" onclick="clearScreen()">🧹 BERSIHKAN</button>
+    <button id="btn-export" class="btn btn-save" style="background:#008800" onclick="exportData()">💾 EKSPOR GPX</button>
+    <button id="btn-reset" class="btn btn-cancel" style="font-size: 9px;" onclick="resetApp()">⚠️ RESET TOTAL</button>
 </div>
 
 <script>
@@ -133,7 +132,9 @@ function initApp() {
     markersLayer = L.layerGroup().addTo(map);
     userMarker = L.circleMarker([0,0], { radius: 8, color: '#fff', fillColor: '#007bff', fillOpacity: 1, weight: 3 }).addTo(map);
     
+    // DETEKSI ZOOM ATAU GESER MANUAL
     map.on('movestart', (e) => { if (!e.hard) setFollowMode(false); });
+    map.on('zoomstart', () => { setFollowMode(false); });
 
     if (navigator.geolocation) {
         navigator.geolocation.watchPosition(pos => {
@@ -155,7 +156,7 @@ function setFollowMode(mode) {
     updateStatus();
 }
 
-function recenterMap() { setFollowMode(true); if(currentPos) map.setZoom(18); }
+function recenterMap() { setFollowMode(true); if(currentPos) map.panTo(currentPos); }
 
 function updateStatus() {
     if(!currentPos) return;
@@ -166,28 +167,26 @@ function updateStatus() {
 function toggleAuto() {
     isAutoOn = !isAutoOn;
     const autoBtn = document.getElementById('auto-btn');
-    const otherBtnIds = ['btn-manual-save', 'btn-load-data', 'btn-export', 'btn-reset'];
+    const btns = ['btn-manual-save', 'btn-view', 'btn-clear', 'btn-export', 'btn-reset'];
     const intervalSelect = document.getElementById('interval-select');
 
     if (isAutoOn) {
         autoBtn.innerText = "🤖 AUTO: ON";
-        autoBtn.style.background = "#ffc107";
-        autoBtn.style.color = "#000";
-        otherBtnIds.forEach(id => document.getElementById(id).disabled = true);
+        autoBtn.style.background = "#ffc107"; autoBtn.style.color = "#000";
+        btns.forEach(id => document.getElementById(id).disabled = true);
         intervalSelect.disabled = true;
         tempAutoPoints = []; 
 
-        saveAutoPoint(); // Simpan detik ke-0 (Instant)
+        saveAutoPoint(); // Instant record
         autoInterval = setInterval(saveAutoPoint, intervalSelect.value);
     } else {
         clearInterval(autoInterval);
         autoBtn.innerText = "🤖 AUTO: OFF";
-        autoBtn.style.background = "#6f42c1";
-        autoBtn.style.color = "#fff";
+        autoBtn.style.background = "#6f42c1"; autoBtn.style.color = "#fff";
         
         if (tempAutoPoints.length > 0) {
             document.getElementById('save-title').innerText = "Simpan Sesi Auto";
-            document.getElementById('coord-preview').innerText = `Terdapat ${tempAutoPoints.length} titik dalam antrian.`;
+            document.getElementById('coord-preview').innerText = `Terekam ${tempAutoPoints.length} titik koordinat.`;
             document.getElementById('save-dialog').style.display = 'flex';
         } else {
             finalizeUI();
@@ -197,7 +196,7 @@ function toggleAuto() {
 
 function saveAutoPoint() {
     if(!currentPos) return;
-    const entry = { lat: currentPos[0], lng: currentPos[1], alt: currentAlt, name: "Auto_" + Date.now(), time: new Date().toISOString() };
+    const entry = { lat: currentPos[0], lng: currentPos[1], alt: currentAlt, name: "T_" + Date.now(), time: new Date().toISOString() };
     tempAutoPoints.push(entry);
     activePoints.push(entry);
     addMarker(entry);
@@ -205,8 +204,8 @@ function saveAutoPoint() {
 }
 
 function finalizeUI() {
-    const otherBtnIds = ['btn-manual-save', 'btn-load-data', 'btn-export', 'btn-reset'];
-    otherBtnIds.forEach(id => document.getElementById(id).disabled = false);
+    const btns = ['btn-manual-save', 'btn-view', 'btn-clear', 'btn-export', 'btn-reset'];
+    btns.forEach(id => document.getElementById(id).disabled = false);
     document.getElementById('interval-select').disabled = false;
     tempAutoPoints = [];
 }
@@ -259,25 +258,34 @@ function openLoadDialog() {
 function processLoad() {
     const key = document.getElementById('file-listbox').value;
     if(!key) return;
-    setFollowMode(false); 
     activePoints = db[key];
     markersLayer.clearLayers();
     activePoints.forEach(addMarker);
+    
     document.getElementById('current-filename').innerText = key;
     document.getElementById('active-file-label').style.display = 'block';
+    
+    setFollowMode(false); 
     const last = activePoints[activePoints.length - 1];
     map.setView([last.lat, last.lng], 18);
     closeDialog('load-dialog');
 }
 
+function clearScreen() {
+    activePoints = [];
+    markersLayer.clearLayers();
+    document.getElementById('active-file-label').style.display = 'none';
+    setFollowMode(true); 
+}
+
 function addMarker(c) {
     const m = L.circleMarker([c.lat, c.lng], { radius: 5, color: '#ff0000', fillColor: '#ff0000', fillOpacity: 0.8 }).addTo(markersLayer);
-    m.bindTooltip(`${c.name} (${c.alt}m)`, { permanent: true, direction: 'bottom', className: 'alt-label', offset: [0, 5] });
+    m.bindTooltip(`${c.name}`, { permanent: true, direction: 'bottom', className: 'alt-label', offset: [0, 5] });
 }
 
 function exportData() {
-    if(activePoints.length === 0) return alert("Data kosong!");
-    let gpx = `<?xml version="1.0" encoding="UTF-8"?><gpx version="1.1" creator="GPSLogger"><trk><trkseg>`;
+    if(activePoints.length === 0) return alert("Peta sedang bersih / tidak ada data.");
+    let gpx = `<?xml version="1.0" encoding="UTF-8"?><gpx version="1.1"><trk><trkseg>`;
     activePoints.forEach(c => {
         gpx += `\n<trkpt lat="${c.lat}" lon="${c.lng}"><ele>${c.alt}</ele><time>${c.time}</time><name>${c.name}</name></trkpt>`;
     });
@@ -285,17 +293,21 @@ function exportData() {
     const blob = new Blob([gpx], { type: 'application/gpx+xml' });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
-    a.download = `GPS_LOG_${Date.now()}.gpx`;
+    a.download = `GPS_EXPORT_${Date.now()}.gpx`;
     a.click();
 }
 
 function deleteHistory() {
     const key = document.getElementById('file-listbox').value;
-    if(key && confirm(`Hapus ${key}?`)) { delete db[key]; localStorage.setItem('gps_pro_db', JSON.stringify(db)); openLoadDialog(); }
+    if(key && confirm(`Hapus data ${key} secara permanen?`)) { 
+        delete db[key]; 
+        localStorage.setItem('gps_pro_db', JSON.stringify(db)); 
+        openLoadDialog(); 
+    }
 }
 
 function closeDialog(id) { document.getElementById(id).style.display = 'none'; }
-function resetApp() { if(confirm("Reset tampilan peta?")) { activePoints = []; markersLayer.clearLayers(); document.getElementById('active-file-label').style.display = 'none'; setFollowMode(true); } }
+function resetApp() { if(confirm("HAPUS TOTAL SEMUA DATABASE?")) { localStorage.clear(); location.reload(); } }
 </script>
 </body>
 </html>
