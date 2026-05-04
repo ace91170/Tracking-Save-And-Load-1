@@ -2,10 +2,9 @@
 <html lang="id">
 <head>
     <meta charset="utf-8">
-    <title>GPS Logger Pro - V1.2 Navigation Lock</title>
+    <title>GPS Logger Pro - V1.2 Final</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     
-    <!-- Leaflet CSS & JS -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
@@ -13,7 +12,6 @@
         html, body { margin:0; padding:0; height: 100%; width: 100%; overflow: hidden; background: #222; font-family: "Arial Narrow", sans-serif; }
         #map { position: absolute; top: 0; bottom: 0; width: 100%; height: 100%; z-index: 1; background: #333; }
         
-        /* Indikator Nama File Aktif */
         #active-file-label {
             position: absolute; top: 10px; right: 10px; z-index: 3000;
             background: #ccff00; color: #000; padding: 3px 10px;
@@ -21,7 +19,6 @@
             border: 1px solid #99aa00; display: none; box-shadow: 0 2px 5px rgba(0,0,0,0.3);
         }
 
-        /* Status Bar Atas */
         .status-bar {
             position: absolute; top: 10px; left: 50%; transform: translateX(-50%);
             z-index: 2000; background: rgba(0,0,0,0.85); color: #00ff00;
@@ -29,13 +26,11 @@
             text-align: center; border: 1px solid #444; min-width: 220px; pointer-events: none;
         }
 
-        /* Kontrol Utama Kanan Bawah */
         .controls {
             position: absolute; bottom: 15px; right: 10px; z-index: 2000;
             display: flex; flex-direction: column; gap: 5px; width: 140px;
         }
 
-        /* Kontrol Navigasi (🎯, +, -) */
         .zoom-controls {
             position: absolute; top: 70px; right: 10px; z-index: 2000;
             display: flex; flex-direction: column; gap: 6px;
@@ -50,15 +45,14 @@
 
         .btn-gps-active { background: #007bff !important; color: white !important; border-color: #0056b3 !important; }
 
-        /* Dialog Modal */
         .custom-dialog {
             position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
             background: white; padding: 15px; border-radius: 12px; z-index: 8000;
             display: none; flex-direction: column; gap: 8px; width: 260px; box-shadow: 0 0 20px rgba(0,0,0,0.5);
         }
 
-        /* Tombol Umum */
         .btn { padding: 8px 10px; border-radius: 6px; border: none; font-weight: bold; cursor: pointer; font-size: 11px; text-transform: uppercase; font-family: "Arial Narrow"; }
+        .btn:disabled { opacity: 0.3; cursor: not-allowed; filter: grayscale(1); }
         .btn-save { background: #28a745; color: white; }
         .btn-load { background: #ffc107; color: #000; }
         .btn-action { background: #007bff; color: white; }
@@ -67,45 +61,35 @@
         
         select, input[type="text"] { padding: 8px; border-radius: 5px; border: 1px solid #ccc; font-family: "Arial Narrow"; font-size: 12px; }
         #file-listbox { width: 100%; height: 120px; }
-
-        /* Label di Atas Marker */
         .alt-label { color: red !important; font-weight: bold !important; font-size: 9px !important; background: white !important; border: 1px solid red !important; padding: 0 2px; border-radius: 2px; }
     </style>
 </head>
 <body>
 
-<!-- Indikator File yang Sedang Dibuka -->
 <div id="active-file-label">FILE: <span id="current-filename">-</span></div>
 
-<!-- Layar Pembuka -->
 <div id="start-overlay" style="position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.95); z-index:9000; display:flex; justify-content:center; align-items:center; text-align:center;">
     <button class="btn btn-action" style="padding:25px 50px; font-size:16px; border-radius:15px; line-height: 1.4;" onclick="initApp()">
-        🚀 TRACKING<br>
-        Save and Load<br>
-        Version 1.2<br>
-        READY
+        🚀 TRACKING<br>Save and Load<br>Version 1.2<br>READY
     </button>
 </div>
 
-<!-- Navigasi Samping -->
 <div class="zoom-controls">
     <div id="btn-recenter" class="btn-tool btn-gps-active" onclick="recenterMap()" title="Posisi Saya">🎯</div>
     <div class="btn-tool" onclick="map.zoomIn()">+</div>
     <div class="btn-tool" onclick="map.zoomOut()">−</div>
 </div>
 
-<!-- Modal Simpan Titik -->
 <div id="save-dialog" class="custom-dialog">
-    <h4 style="margin:0">Simpan Titik</h4>
+    <h4 id="save-title" style="margin:0">Simpan Titik</h4>
     <p id="coord-preview" style="font-size: 10px; color: #666; margin:0"></p>
-    <input type="text" id="point-name" placeholder="Nama titik (misal: Patok 1)">
+    <input type="text" id="point-name" placeholder="Nama Sesi/Titik">
     <div style="display: flex; gap: 8px;">
         <button class="btn btn-save" style="flex:1" onclick="confirmSave()">SIMPAN</button>
-        <button class="btn btn-cancel" style="flex:1" onclick="closeDialog('save-dialog')">BATAL</button>
+        <button class="btn btn-cancel" style="flex:1" onclick="cancelSave()">BATAL</button>
     </div>
 </div>
 
-<!-- Modal Load Data -->
 <div id="load-dialog" class="custom-dialog">
     <h4 style="margin:0">Load Data</h4>
     <select id="file-listbox" size="5"></select>
@@ -113,14 +97,12 @@
         <button class="btn btn-load" style="flex:1" onclick="processLoad()">BUKA</button>
         <button class="btn btn-cancel" style="flex:1" onclick="deleteHistory()">HAPUS</button>
     </div>
-    <button class="btn btn-action" onclick="closeDialog('load-dialog')">TUTUP PETA</button>
+    <button class="btn btn-action" onclick="closeDialog('load-dialog')">TUTUP</button>
 </div>
 
-<!-- Bar Status & Map -->
 <div class="status-bar" id="stat">Mencari GPS...</div>
 <div id="map"></div>
 
-<!-- Panel Kontrol Bawah -->
 <div class="controls">
     <select id="interval-select">
         <option value="4000">⏱️ 4 DETIK</option>
@@ -129,10 +111,10 @@
         <option value="15000">⏱️ 15 DETIK</option>
     </select>
     <button id="auto-btn" class="btn btn-util" onclick="toggleAuto()">🤖 AUTO: OFF</button>
-    <button class="btn btn-save" onclick="openSaveDialog()">📍 SIMPAN TITIK</button>
-    <button class="btn btn-load" onclick="openLoadDialog()">📂 LOAD DATA</button>
-    <button class="btn btn-action" onclick="exportData()">💾 EKSPOR GPX</button>
-    <button class="btn btn-cancel" style="font-size: 9px; padding: 4px;" onclick="resetApp()">⚠️ RESET</button>
+    <button id="btn-manual-save" class="btn btn-save" onclick="openSaveDialog()">📍 SIMPAN TITIK</button>
+    <button id="btn-load-data" class="btn btn-load" onclick="openLoadDialog()">📂 LOAD DATA</button>
+    <button id="btn-export" class="btn btn-action" onclick="exportData()">💾 EKSPOR GPX</button>
+    <button id="btn-reset" class="btn btn-cancel" style="font-size: 9px; padding: 4px;" onclick="resetApp()">⚠️ RESET</button>
 </div>
 
 <script>
@@ -141,64 +123,39 @@ let db = JSON.parse(localStorage.getItem('gps_pro_db')) || {};
 let currentPos = null, currentAlt = "0.0";
 let map, userMarker, markersLayer;
 let isAutoOn = false, autoInterval = null;
-let followUser = true; 
-let firstLock = true; 
+let followUser = true, firstLock = true;
+let tempAutoPoints = []; 
 
 function initApp() {
     document.getElementById('start-overlay').style.display = 'none';
-    
-    // Inisialisasi Peta
     map = L.map('map', { zoomControl: false }).setView([0,0], 2);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
     markersLayer = L.layerGroup().addTo(map);
-    
-    // Simbol User (Marker GPS)
     userMarker = L.circleMarker([0,0], { radius: 8, color: '#fff', fillColor: '#007bff', fillOpacity: 1, weight: 3 }).addTo(map);
     
-    // Deteksi jika user menggeser peta secara manual
-    map.on('movestart', (e) => {
-        if (!e.hard) setFollowMode(false); 
-    });
+    map.on('movestart', (e) => { if (!e.hard) setFollowMode(false); });
 
-    // Jalankan GPS
     if (navigator.geolocation) {
         navigator.geolocation.watchPosition(pos => {
             currentPos = [pos.coords.latitude, pos.coords.longitude];
             currentAlt = pos.coords.altitude ? pos.coords.altitude.toFixed(1) : "0.0";
-            
             userMarker.setLatLng(currentPos);
-            
-            if (firstLock) {
-                map.setView(currentPos, 18); // Default Zoom 18 saat buka
-                firstLock = false;
-                setFollowMode(true);
-            } else if (followUser) {
-                map.panTo(currentPos);
-            }
-            
+            if (firstLock) { map.setView(currentPos, 18); firstLock = false; setFollowMode(true); } 
+            else if (followUser) { map.panTo(currentPos); }
             updateStatus();
-        }, err => {
-            alert("Gagal mendapatkan lokasi. Pastikan GPS aktif.");
-        }, { enableHighAccuracy: true });
+        }, null, { enableHighAccuracy: true });
     }
 }
 
 function setFollowMode(mode) {
     followUser = mode;
     const btn = document.getElementById('btn-recenter');
-    if(mode) {
-        btn.classList.add('btn-gps-active');
-        if(currentPos) map.panTo(currentPos);
-    } else {
-        btn.classList.remove('btn-gps-active');
-    }
+    if(mode) { btn.classList.add('btn-gps-active'); if(currentPos) map.panTo(currentPos); } 
+    else { btn.classList.remove('btn-gps-active'); }
     updateStatus();
 }
 
-function recenterMap() {
-    setFollowMode(true);
-    if(currentPos) map.setZoom(18); // Kembalikan ke zoom default saat tekan target
-}
+function recenterMap() { setFollowMode(true); if(currentPos) map.setZoom(18); }
 
 function updateStatus() {
     if(!currentPos) return;
@@ -206,9 +163,57 @@ function updateStatus() {
     document.getElementById('stat').innerHTML = `MODE: ${modeText} | PTS: ${activePoints.length} | ALT: ${currentAlt}m<br>${currentPos[0].toFixed(6)}, ${currentPos[1].toFixed(6)}`;
 }
 
-// FUNGSI MODAL SIMPAN
+function toggleAuto() {
+    isAutoOn = !isAutoOn;
+    const autoBtn = document.getElementById('auto-btn');
+    const otherBtnIds = ['btn-manual-save', 'btn-load-data', 'btn-export', 'btn-reset'];
+    const intervalSelect = document.getElementById('interval-select');
+
+    if (isAutoOn) {
+        autoBtn.innerText = "🤖 AUTO: ON";
+        autoBtn.style.background = "#ffc107";
+        autoBtn.style.color = "#000";
+        otherBtnIds.forEach(id => document.getElementById(id).disabled = true);
+        intervalSelect.disabled = true;
+        tempAutoPoints = []; 
+
+        saveAutoPoint(); // Simpan detik ke-0 (Instant)
+        autoInterval = setInterval(saveAutoPoint, intervalSelect.value);
+    } else {
+        clearInterval(autoInterval);
+        autoBtn.innerText = "🤖 AUTO: OFF";
+        autoBtn.style.background = "#6f42c1";
+        autoBtn.style.color = "#fff";
+        
+        if (tempAutoPoints.length > 0) {
+            document.getElementById('save-title').innerText = "Simpan Sesi Auto";
+            document.getElementById('coord-preview').innerText = `Terdapat ${tempAutoPoints.length} titik dalam antrian.`;
+            document.getElementById('save-dialog').style.display = 'flex';
+        } else {
+            finalizeUI();
+        }
+    }
+}
+
+function saveAutoPoint() {
+    if(!currentPos) return;
+    const entry = { lat: currentPos[0], lng: currentPos[1], alt: currentAlt, name: "Auto_" + Date.now(), time: new Date().toISOString() };
+    tempAutoPoints.push(entry);
+    activePoints.push(entry);
+    addMarker(entry);
+    updateStatus();
+}
+
+function finalizeUI() {
+    const otherBtnIds = ['btn-manual-save', 'btn-load-data', 'btn-export', 'btn-reset'];
+    otherBtnIds.forEach(id => document.getElementById(id).disabled = false);
+    document.getElementById('interval-select').disabled = false;
+    tempAutoPoints = [];
+}
+
 function openSaveDialog() {
     if(!currentPos) return;
+    document.getElementById('save-title').innerText = "Simpan Titik";
     document.getElementById('coord-preview').innerText = `${currentPos[0].toFixed(6)}, ${currentPos[1].toFixed(6)}`;
     document.getElementById('save-dialog').style.display = 'flex';
 }
@@ -217,20 +222,28 @@ function confirmSave() {
     const name = document.getElementById('point-name').value.trim();
     if(!name) return alert("Nama wajib diisi!");
     
-    const entry = { lat: currentPos[0], lng: currentPos[1], alt: currentAlt, name: name, time: new Date().toISOString() };
-    activePoints.push(entry);
+    if (tempAutoPoints.length > 0) {
+        db[name] = [...tempAutoPoints];
+    } else {
+        const entry = { lat: currentPos[0], lng: currentPos[1], alt: currentAlt, name: name, time: new Date().toISOString() };
+        activePoints.push(entry);
+        if(!db[name]) db[name] = [];
+        db[name].push(entry);
+        addMarker(entry);
+    }
     
-    if(!db[name]) db[name] = [];
-    db[name].push(entry);
     localStorage.setItem('gps_pro_db', JSON.stringify(db));
-    
-    addMarker(entry);
-    closeDialog('save-dialog');
     document.getElementById('point-name').value = "";
-    updateStatus();
+    closeDialog('save-dialog');
+    finalizeUI();
 }
 
-// FUNGSI LOAD DATA
+function cancelSave() {
+    document.getElementById('point-name').value = "";
+    closeDialog('save-dialog');
+    finalizeUI();
+}
+
 function openLoadDialog() {
     const listbox = document.getElementById('file-listbox');
     listbox.innerHTML = "";
@@ -246,43 +259,20 @@ function openLoadDialog() {
 function processLoad() {
     const key = document.getElementById('file-listbox').value;
     if(!key) return;
-    
     setFollowMode(false); 
     activePoints = db[key];
     markersLayer.clearLayers();
     activePoints.forEach(addMarker);
-    
     document.getElementById('current-filename').innerText = key;
     document.getElementById('active-file-label').style.display = 'block';
-    
     const last = activePoints[activePoints.length - 1];
     map.setView([last.lat, last.lng], 18);
     closeDialog('load-dialog');
-    updateStatus();
 }
 
 function addMarker(c) {
     const m = L.circleMarker([c.lat, c.lng], { radius: 5, color: '#ff0000', fillColor: '#ff0000', fillOpacity: 0.8 }).addTo(markersLayer);
     m.bindTooltip(`${c.name} (${c.alt}m)`, { permanent: true, direction: 'bottom', className: 'alt-label', offset: [0, 5] });
-}
-
-function toggleAuto() {
-    isAutoOn = !isAutoOn;
-    const btn = document.getElementById('auto-btn');
-    if (isAutoOn) {
-        btn.innerText = "🤖 AUTO: ON";
-        btn.style.background = "#ffc107";
-        autoInterval = setInterval(() => {
-            if(!currentPos) return;
-            const entry = { lat: currentPos[0], lng: currentPos[1], alt: currentAlt, name: "Auto_"+Date.now(), time: new Date().toISOString() };
-            activePoints.push(entry);
-            addMarker(entry);
-            updateStatus();
-        }, document.getElementById('interval-select').value);
-    } else {
-        btn.innerText = "🤖 AUTO: OFF"; btn.style.background = "#6f42c1";
-        clearInterval(autoInterval);
-    }
 }
 
 function exportData() {
@@ -292,21 +282,16 @@ function exportData() {
         gpx += `\n<trkpt lat="${c.lat}" lon="${c.lng}"><ele>${c.alt}</ele><time>${c.time}</time><name>${c.name}</name></trkpt>`;
     });
     gpx += `\n</trkseg></trk></gpx>`;
-    
     const blob = new Blob([gpx], { type: 'application/gpx+xml' });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
-    a.download = `GPS_EXPORT_${Date.now()}.gpx`;
+    a.download = `GPS_LOG_${Date.now()}.gpx`;
     a.click();
 }
 
 function deleteHistory() {
     const key = document.getElementById('file-listbox').value;
-    if(key && confirm(`Hapus data ${key}?`)) {
-        delete db[key];
-        localStorage.setItem('gps_pro_db', JSON.stringify(db));
-        openLoadDialog();
-    }
+    if(key && confirm(`Hapus ${key}?`)) { delete db[key]; localStorage.setItem('gps_pro_db', JSON.stringify(db)); openLoadDialog(); }
 }
 
 function closeDialog(id) { document.getElementById(id).style.display = 'none'; }
